@@ -10,6 +10,7 @@ import 'models/plan.dart';
 import 'models/ai_usage_record.dart';
 import 'models/ai_api_key.dart';
 import 'models/alert_threshold.dart';
+import 'models/service_review.dart';
 
 class IsarService {
   IsarService._();
@@ -61,6 +62,7 @@ class IsarService {
         AiUsageRecordSchema,
         AiApiKeySchema,
         AlertThresholdSchema,
+        ServiceReviewSchema,
       ],
       directory: dir.path,
       name: 'conso_telecom',

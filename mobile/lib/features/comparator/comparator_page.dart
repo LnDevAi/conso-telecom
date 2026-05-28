@@ -4,24 +4,59 @@ import 'package:intl/intl.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../core/api/tariff_api.dart';
-import '../../features/dashboard/dashboard_provider.dart';
 import '../../shared/models/tariff_plan.dart';
 import '../../shared/models/ai_model.dart';
 import '../../shared/widgets/ai_provider_badge.dart';
+import 'reviews_page.dart';
 
-class ComparatorPage extends ConsumerStatefulWidget {
+class ComparatorPage extends ConsumerWidget {
   const ComparatorPage({super.key});
 
   @override
-  ConsumerState<ComparatorPage> createState() => _ComparatorPageState();
+  Widget build(BuildContext context, WidgetRef ref) {
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Comparateur & Avis'),
+          bottom: TabBar(
+            tabs: const [
+              Tab(icon: Icon(Icons.compare_arrows, size: 18), text: 'Comparateur'),
+              Tab(icon: Icon(Icons.rate_review_outlined, size: 18), text: 'Avis'),
+            ],
+          ),
+        ),
+        body: const TabBarView(
+          children: [
+            _ComparatorTab(),
+            ReviewsTab(),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
-class _ComparatorPageState extends ConsumerState<ComparatorPage> {
+// ────────────────────────────────────────────
+// Onglet Comparateur (logique inchangée)
+// ────────────────────────────────────────────
+class _ComparatorTab extends ConsumerStatefulWidget {
+  const _ComparatorTab();
+
+  @override
+  ConsumerState<_ComparatorTab> createState() => _ComparatorTabState();
+}
+
+class _ComparatorTabState extends ConsumerState<_ComparatorTab>
+    with AutomaticKeepAliveClientMixin {
   List<TariffPlan> _rankedPlans = [];
   List<_AiModelRanking> _rankedModels = [];
   bool _loading = true;
 
   final TariffApi _api = TariffApi();
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -35,11 +70,9 @@ class _ComparatorPageState extends ConsumerState<ComparatorPage> {
       final operators = await _api.fetchOperators('BF');
       final aiProviders = await _api.fetchAiProviders();
 
-      // Trier les forfaits par prix (estimation coût pour usage réel)
       final allPlans = operators.expand((o) => o.plans).toList()
         ..sort((a, b) => a.price.compareTo(b.price));
 
-      // Trier les modèles IA par coût estimé (base: 100K tokens input, 20K output/mois)
       const inputTokens = 100000;
       const outputTokens = 20000;
       final modelRankings = <_AiModelRanking>[];
@@ -68,129 +101,128 @@ class _ComparatorPageState extends ConsumerState<ComparatorPage> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final theme = Theme.of(context);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Comparateur'),
-      ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                // ---- Meilleur forfait ----
-                Text(
-                  'Meilleur forfait pour votre usage',
-                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+    return _loading
+        ? const Center(child: CircularProgressIndicator())
+        : ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              // ---- Info usage réel ----
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF6FF),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppTheme.primary.withOpacity(0.2)),
                 ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEFF6FF),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppTheme.primary.withOpacity(0.2)),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.info_outline, color: AppTheme.primary, size: 14),
-                      SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          'Classement basé sur votre profil de consommation du mois en cours.',
-                          style: TextStyle(fontSize: 11, color: AppTheme.primary),
-                        ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.info_outline, color: AppTheme.primary, size: 14),
+                    SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Classement basé sur votre profil de consommation du mois en cours.',
+                        style: TextStyle(fontSize: 11, color: AppTheme.primary),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 12),
-                if (_rankedPlans.isEmpty)
-                  const Text('Aucun forfait disponible hors-ligne.')
-                else
-                  ..._rankedPlans.asMap().entries.map((entry) {
+              ),
+              const SizedBox(height: 16),
+
+              // ---- Meilleur forfait ----
+              Text(
+                'Meilleur forfait pour votre usage',
+                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 12),
+              if (_rankedPlans.isEmpty)
+                const Text('Aucun forfait disponible hors-ligne.')
+              else
+                ..._rankedPlans.asMap().entries.map((entry) {
+                  final rank = entry.key + 1;
+                  final plan = entry.value;
+                  return _PlanRankCard(rank: rank, plan: plan, formatFcfa: _formatFcfa);
+                }),
+
+              const SizedBox(height: 24),
+
+              // ---- Meilleur modèle IA ----
+              Text(
+                'Meilleur modèle IA (100K tokens/mois)',
+                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Estimation basée sur 100 000 tokens d\'entrée + 20 000 tokens de sortie par mois.',
+                style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+              ),
+              const SizedBox(height: 12),
+              Card(
+                child: DataTable(
+                  columnSpacing: 12,
+                  horizontalMargin: 12,
+                  columns: const [
+                    DataColumn(label: Text('Rang', style: TextStyle(fontSize: 12))),
+                    DataColumn(label: Text('Modèle', style: TextStyle(fontSize: 12))),
+                    DataColumn(label: Text('Coût/mois', style: TextStyle(fontSize: 12))),
+                  ],
+                  rows: _rankedModels.asMap().entries.map((entry) {
                     final rank = entry.key + 1;
-                    final plan = entry.value;
-                    return _PlanRankCard(rank: rank, plan: plan, formatFcfa: _formatFcfa);
-                  }),
-
-                const SizedBox(height: 24),
-
-                // ---- Meilleur modèle IA ----
-                Text(
-                  'Meilleur modèle IA (100K tokens/mois)',
-                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Estimation basée sur 100 000 tokens d\'entrée + 20 000 tokens de sortie par mois.',
-                  style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
-                ),
-                const SizedBox(height: 12),
-                Card(
-                  child: DataTable(
-                    columnSpacing: 12,
-                    horizontalMargin: 12,
-                    columns: const [
-                      DataColumn(label: Text('Rang', style: TextStyle(fontSize: 12))),
-                      DataColumn(label: Text('Modèle', style: TextStyle(fontSize: 12))),
-                      DataColumn(label: Text('Coût/mois', style: TextStyle(fontSize: 12))),
-                    ],
-                    rows: _rankedModels.asMap().entries.map((entry) {
-                      final rank = entry.key + 1;
-                      final ranking = entry.value;
-                      return DataRow(
-                        cells: [
-                          DataCell(_RankBadge(rank: rank)),
-                          DataCell(
-                            Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                AiProviderBadge(
-                                  providerId: ranking.model.providerId,
-                                  showName: false,
-                                  compact: true,
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  ranking.model.name,
-                                  style: const TextStyle(fontSize: 11),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
-                            ),
+                    final ranking = entry.value;
+                    return DataRow(
+                      cells: [
+                        DataCell(_RankBadge(rank: rank)),
+                        DataCell(
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              AiProviderBadge(
+                                providerId: ranking.model.providerId,
+                                showName: false,
+                                compact: true,
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                ranking.model.name,
+                                style: const TextStyle(fontSize: 11),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
                           ),
-                          DataCell(
-                            Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  '\$${ranking.estimatedCostUsd.toStringAsFixed(3)}',
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppTheme.aiPurple,
-                                  ),
+                        ),
+                        DataCell(
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '\$${ranking.estimatedCostUsd.toStringAsFixed(3)}',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppTheme.aiPurple,
                                 ),
-                                Text(
-                                  _formatFcfa(ranking.estimatedCostUsd * 610),
-                                  style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary),
-                                ),
-                              ],
-                            ),
+                              ),
+                              Text(
+                                _formatFcfa(ranking.estimatedCostUsd * 610),
+                                style: const TextStyle(
+                                    fontSize: 10, color: AppTheme.textSecondary),
+                              ),
+                            ],
                           ),
-                        ],
-                      );
-                    }).toList(),
-                  ),
+                        ),
+                      ],
+                    );
+                  }).toList(),
                 ),
-                const SizedBox(height: 24),
-              ],
-            ),
-    );
+              ),
+              const SizedBox(height: 24),
+            ],
+          );
   }
 }
 
