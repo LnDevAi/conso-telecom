@@ -136,5 +136,5 @@ async def seeded_db(db: AsyncSession) -> AsyncSession:
     admin = AdminUser(email="admin@test.com", hashed_password=get_password_hash("test1234"), is_active=True)
     db.add(admin)
 
-    await db.commit()
+    await db.flush()
     return db
