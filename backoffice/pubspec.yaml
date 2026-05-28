@@ -1,0 +1,27 @@
+name: conso_backoffice
+description: ConsoTélécom — Back-office d'administration
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_web_plugins:
+    sdk: flutter
+  go_router: ^13.0.0
+  flutter_riverpod: ^2.5.0
+  dio: ^5.4.0
+  google_fonts: ^6.1.0
+  data_table_2: ^2.5.0
+  intl: ^0.19.0
+  flutter_secure_storage: ^9.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true

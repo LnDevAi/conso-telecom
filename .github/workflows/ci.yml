@@ -1,0 +1,127 @@
+name: CI — ConsoTelecom v2.0
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+jobs:
+  # ── Backend: Python 3.11 & 3.12 ─────────────────────────────────────────────
+  backend:
+    name: Backend (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: consotelecom
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: consotelecom_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install aiosqlite pytest-asyncio
+
+      - name: Run migrations smoke test (PostgreSQL)
+        env:
+          DATABASE_SYNC_URL: postgresql://consotelecom:testpassword@localhost:5432/consotelecom_test
+          DATABASE_URL: postgresql+asyncpg://consotelecom:testpassword@localhost:5432/consotelecom_test
+          SECRET_KEY: ci_test_secret_key_placeholder_64_characters_xxxx
+          ADMIN_EMAIL: admin@test.com
+          ADMIN_PASSWORD: testpassword123
+        run: alembic upgrade head
+
+      - name: Run pytest (SQLite in-memory)
+        env:
+          SECRET_KEY: ci_test_secret_key_placeholder_64_characters_xxxx
+          DATABASE_URL: sqlite+aiosqlite:///./test_ci.db
+          DATABASE_SYNC_URL: sqlite:///./test_ci.db
+          ADMIN_EMAIL: admin@test.com
+          ADMIN_PASSWORD: testpassword123
+        run: pytest tests/ -v --tb=short
+
+  # ── Mobile: Flutter stable ────────────────────────────────────────────────────
+  flutter-mobile:
+    name: Mobile (Flutter stable)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: mobile
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install deps
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos
+
+      - name: Test
+        run: flutter test
+
+  # ── Back-office: Flutter Web ─────────────────────────────────────────────────
+  backoffice:
+    name: Back-office (Flutter stable)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: backoffice
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install deps
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos
+
+      - name: Run tests
+        run: flutter test --reporter=github
+
+      - name: Build web release
+        run: |
+          flutter build web --release \
+            --dart-define=API_BASE_URL=http://localhost:8000/api/v1

@@ -1,0 +1,40 @@
+name: conso_telecom
+description: ConsoTélécom v2.0 — Mesure consommation télécom et tokens IA
+version: 2.0.0+1
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^2.5.0
+  riverpod_annotation: ^2.3.0
+  go_router: ^13.0.0
+  isar: ^3.1.0
+  isar_flutter_libs: ^3.1.0
+  path_provider: ^2.1.0
+  flutter_secure_storage: ^9.0.0
+  dio: ^5.4.0
+  google_fonts: ^6.1.0
+  fl_chart: ^0.67.0
+  intl: ^0.19.0
+  shared_preferences: ^2.2.0
+  permission_handler: ^11.3.0
+  workmanager: ^0.5.0
+  flutter_local_notifications: ^17.0.0
+  csv: ^6.0.0
+  file_picker: ^8.0.0
+  share_plus: ^9.0.0
+  encrypt: ^5.0.0
+  http: ^1.2.0
+  percent_indicator: ^4.2.3
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+  build_runner: ^2.4.0
+  isar_generator: ^3.1.0
+  riverpod_generator: ^2.3.0
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
