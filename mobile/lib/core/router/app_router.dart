@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import '../l10n/language_provider.dart';
 
 import '../../features/dashboard/dashboard_page.dart';
 import '../../features/data_usage/data_usage_page.dart';
@@ -107,18 +108,10 @@ GoRouter appRouter(Ref ref) {
   );
 }
 
-class ScaffoldWithNavBar extends StatelessWidget {
+class ScaffoldWithNavBar extends ConsumerWidget {
   const ScaffoldWithNavBar({super.key, required this.child});
 
   final Widget child;
-
-  static const _tabs = [
-    _NavTab(icon: Icons.dashboard_outlined, activeIcon: Icons.dashboard, label: 'Tableau'),
-    _NavTab(icon: Icons.wifi_outlined, activeIcon: Icons.wifi, label: 'Données'),
-    _NavTab(icon: Icons.psychology_outlined, activeIcon: Icons.psychology, label: 'IA'),
-    _NavTab(icon: Icons.account_balance_wallet_outlined, activeIcon: Icons.account_balance_wallet, label: 'Coûts'),
-    _NavTab(icon: Icons.settings_outlined, activeIcon: Icons.settings, label: 'Réglages'),
-  ];
 
   static const _paths = ['/', '/data', '/ai', '/costs', '/settings'];
 
@@ -130,9 +123,18 @@ class ScaffoldWithNavBar extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final location = GoRouterState.of(context).uri.toString();
     final currentIndex = _locationToIndex(location);
+    final s = ref.watch(translationsProvider);
+
+    final tabs = [
+      _NavTab(icon: Icons.dashboard_outlined, activeIcon: Icons.dashboard, label: s.navDashboard),
+      _NavTab(icon: Icons.wifi_outlined, activeIcon: Icons.wifi, label: s.navData),
+      _NavTab(icon: Icons.psychology_outlined, activeIcon: Icons.psychology, label: s.navAi),
+      _NavTab(icon: Icons.account_balance_wallet_outlined, activeIcon: Icons.account_balance_wallet, label: s.navCosts),
+      _NavTab(icon: Icons.settings_outlined, activeIcon: Icons.settings, label: s.navSettings),
+    ];
 
     return Scaffold(
       body: child,
@@ -143,7 +145,7 @@ class ScaffoldWithNavBar extends StatelessWidget {
             context.go(_paths[index]);
           }
         },
-        destinations: _tabs
+        destinations: tabs
             .map(
               (tab) => NavigationDestination(
                 icon: Icon(tab.icon),
